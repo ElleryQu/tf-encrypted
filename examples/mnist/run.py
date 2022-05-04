@@ -11,7 +11,7 @@ import tensorflow as tf
 import tensorflow.keras as keras
 
 import tf_encrypted as tfe
-from convert import decode
+from .convert import decode
 
 if len(sys.argv) > 1:
     # config file was specified
@@ -172,7 +172,7 @@ class PredictionClient:
             return op
 
 
-if __name__ == "__main__":
+def run():
 
     logging.basicConfig(level=logging.DEBUG)
 
