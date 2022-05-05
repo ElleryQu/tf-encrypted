@@ -102,4 +102,6 @@ or remotely using:
 python3 examples/mnist/run.py config.json
 ```
 
+> XD: python main.py examples/mnist/config.json
+
 See more details in the [documentation](/docs/RUNNING.md).

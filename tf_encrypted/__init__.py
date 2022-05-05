@@ -41,6 +41,7 @@ except DistributionNotFound:
 else:
     __version__ = _dist.version
 
+# get all the secure functions of the protocol.
 __protocol__ = None
 __all_prot_funcs__ = protocol.get_all_funcs()
 

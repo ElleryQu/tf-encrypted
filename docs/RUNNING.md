@@ -56,6 +56,8 @@ user@10.0.0.20 $ python3 -m tf_encrypted.player input-provider --config config.j
 user@10.0.0.30 $ python3 -m tf_encrypted.player result-receiver --config config.json
 ```
 
+>  XD modify: python -m  tf_encrypted.player server0 --config config.json
+
 Finally, assuming our computation is defined by some Python script we simply add the following to the top of it:
 
 ```python

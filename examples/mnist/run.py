@@ -13,6 +13,7 @@ import tensorflow.keras as keras
 import tf_encrypted as tfe
 from .convert import decode
 
+# load config.json.
 if len(sys.argv) > 1:
     # config file was specified
     config_file = sys.argv[1]
@@ -172,9 +173,19 @@ class PredictionClient:
             return op
 
 
-def run():
+def run(*argv):
+    # script: load config.json.
+    if len(argv) > 1:
+        # config file was specified
+        config_file = argv[1]
+        config = tfe.RemoteConfig.load(config_file)
+        tfe.set_config(config)
+        tfe.set_protocol(tfe.protocol.Pond())
 
-    logging.basicConfig(level=logging.DEBUG)
+    session_target = argv[2] if len(argv) > 2 else None
+
+    # run().
+    logging.basicConfig(level=logging.INFO)
 
     model_owner = ModelOwner(
         player_name="model-owner", local_data_file="./data/train.tfrecord"
@@ -183,6 +194,13 @@ def run():
     prediction_client = PredictionClient(
         player_name="prediction-client", local_data_file="./data/test.tfrecord"
     )
+
+    # debug.
+    print('-'*50+'\n')
+    player = tfe.config.__config__.get_player('server0')
+    print(tfe.config.__config__)
+    print(isinstance(player, tfe.player.Player))
+    print('-'*50+'\n')
 
     # get model parameters as private tensors from model owner
     params = model_owner.provide_weights()
