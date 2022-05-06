@@ -10,6 +10,7 @@ def wrap_in_variables(*tensors):
         )
         for tensor in tensors
     ]
+    # XD: return an op that finish all the ops defined in params.
     group_updater = tf.group(
         *[var.assign_from_same(tensor) for var, tensor in zip(variables, tensors)]
     )

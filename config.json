@@ -1,7 +1,7 @@
 {
     "server0": "127.0.0.1:20221",
     "server1": "127.0.0.1:20222",
-    "server2": "127.0.0.1:20223",
-    "input-provider": "127.0.0.1:20224",
-    "result-receiver": "127.0.0.1:20225"
+    "crypto-producer": "127.0.0.1:20223",
+    "model-trainer": "127.0.0.1:20224",
+    "prediction-client": "127.0.0.1:20225"
 }

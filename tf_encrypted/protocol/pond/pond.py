@@ -1353,6 +1353,7 @@ class Pond(Protocol):
 
         if isinstance(xs, (list, tuple)):
             # apply recursively
+            # [cache(x) = [op, x]]; updaters = iter(op), cached = iter(x).
             updaters, cached = zip(*[self.cache(x) for x in xs])
             return tf.group(*updaters), cached
 
@@ -1372,6 +1373,8 @@ class Pond(Protocol):
         if func is None:
             raise TypeError("Don't know how to cache {}".format(type(xs)))
 
+        # updater: for share in x in xs, define a variable v_share_x = share.
+        # cached: [v_share_x], v_share_x is initialized to 0. 
         updater, cached = func(self, xs)
         nodes[node_key] = cached
 
@@ -2373,6 +2376,7 @@ def _cache_private(prot, x):
     with tf.name_scope("cache"):
 
         with tf.device(prot.server_0.device_name):
+            # XD: updater0 = assign, x0_cached = variable(0).
             updater0, [x0_cached] = wrap_in_variables(x0)
 
         with tf.device(prot.server_1.device_name):

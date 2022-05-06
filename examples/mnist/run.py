@@ -11,7 +11,7 @@ import tensorflow as tf
 import tensorflow.keras as keras
 
 import tf_encrypted as tfe
-from .convert import decode
+from convert import decode
 
 # load config.json.
 if len(sys.argv) > 1:
@@ -173,16 +173,7 @@ class PredictionClient:
             return op
 
 
-def run(*argv):
-    # script: load config.json.
-    if len(argv) > 1:
-        # config file was specified
-        config_file = argv[1]
-        config = tfe.RemoteConfig.load(config_file)
-        tfe.set_config(config)
-        tfe.set_protocol(tfe.protocol.Pond())
-
-    session_target = argv[2] if len(argv) > 2 else None
+if __name__ == '__main__':
 
     # run().
     logging.basicConfig(level=logging.INFO)

@@ -27,3 +27,4 @@ def player_device(player: Player):
   :param Player player: The :class:`Player` object.
   """
     return tf.device(player.device_name)
+4
