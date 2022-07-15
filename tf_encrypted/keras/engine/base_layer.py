@@ -8,6 +8,7 @@ from tensorflow.python.keras.utils import generic_utils
 import tf_encrypted as tfe
 from tf_encrypted.keras import backend as KE
 from tf_encrypted.keras.engine.base_layer_utils import unique_object_name
+from tf_encrypted.protocol.aby3.aby3 import ABY3PrivateTensor
 from tf_encrypted.protocol.pond import PondMaskedTensor
 from tf_encrypted.protocol.pond import PondPrivateTensor
 
@@ -123,7 +124,7 @@ class Layer(ABC):
             of private variables
         sess: tfe session"""
 
-        weights_types = (np.ndarray, PondPrivateTensor, PondMaskedTensor)
+        weights_types = (np.ndarray, PondPrivateTensor, PondMaskedTensor, ABY3PrivateTensor)
         assert isinstance(weights[0], weights_types), type(weights[0])
 
         # Assign new keras weights to existing weights defined by
@@ -138,6 +139,10 @@ class Layer(ABC):
                 fd = tfe_weights_pl.feed(weights[i].reshape(shape))
                 sess.run(tfe.assign(w, tfe_weights_pl), feed_dict=fd)
         elif isinstance(weights[0], PondPrivateTensor):
+            for i, w in enumerate(self.weights):
+                shape = w.shape.as_list()
+                sess.run(tfe.assign(w, weights[i].reshape(shape)))
+        elif isinstance(weights[0], ABY3PrivateTensor):
             for i, w in enumerate(self.weights):
                 shape = w.shape.as_list()
                 sess.run(tfe.assign(w, weights[i].reshape(shape)))

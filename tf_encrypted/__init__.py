@@ -23,6 +23,7 @@ from .config import RemoteConfig
 from .config import get_config
 from .player import player
 from .protocol import Pond
+from .protocol import ABY3
 from .session import Session
 from .session import set_log_directory
 from .session import set_tfe_events_flag

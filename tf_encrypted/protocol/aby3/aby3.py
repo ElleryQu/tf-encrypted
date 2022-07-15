@@ -6,8 +6,10 @@ Implementation of the ABY3 framework.
 from __future__ import absolute_import
 
 import abc
+from asyncio import protocols
 import sys
-from functools import reduce
+import random
+from functools import partial, reduce
 from math import ceil
 from math import log2
 from typing import Callable
@@ -34,6 +36,8 @@ from ...tensor.helpers import inverse
 from ...tensor.native import native_factory
 from ..protocol import Protocol
 from ..protocol import memoize
+from ..protocol import nodes
+from ...utils import wrap_in_variables
 
 TFEInputter = Callable[[], Union[List[tf.Tensor], tf.Tensor]]
 TF_NATIVE_TYPES = [tf.bool, tf.int8, tf.int16, tf.int32, tf.int64]
@@ -259,6 +263,157 @@ class ABY3(Protocol):
                 x_on_2 = factory.constant(value)
 
         return ABY3Constant(self, [x_on_0, x_on_1, x_on_2], apply_scaling, share_type)
+
+    def define_public_placeholder(
+        self,
+        shape,
+        apply_scaling: bool = True,
+        share_type=ARITHMETIC,
+        name: Optional[str] = None,
+        factory: Optional[AbstractFactory] = None,
+    ):
+        """Define a `public` placeholder to use in computation. This will be known
+    to both parties.
+
+    .. code-block:: python
+
+        x = prot.define_public_placeholder(shape=(1024, 1024))
+
+    :See: tf.placeholder
+
+    :param List[int] shape: The shape of the placeholder.
+    :param bool apply_scaling: Whether or not to scale the value.
+    :param int share_type: ARITHMETIC or BOOLEAN.
+    :param str name: What name to give to this node in the graph.
+    :param AbstractFactory factory: Which tensor type to represent this value
+        with.
+    """
+
+        factory = factory or self.int_factory
+        suffix = "-" + name if name else ""
+
+        with tf.name_scope("public-placeholder{}".format(suffix)):
+
+            with tf.device(self.servers[0].device_name):
+                x_on_0 = factory.placeholder(shape)
+
+            with tf.device(self.servers[1].device_name):
+                x_on_1 = factory.placeholder(shape)
+
+            with tf.device(self.servers[2].device_name):
+                x_on_2 = factory.placeholder(shape)
+
+        return ABY3PublicPlaceholder(self, (x_on_0, x_on_1, x_on_2), apply_scaling, share_type)
+
+    def define_private_placeholder(
+        self,
+        shape,
+        apply_scaling: bool = True,
+        share_type=ARITHMETIC,
+        name: Optional[str] = None,
+        factory: Optional[AbstractFactory] = None,
+    ):
+        """Define a `private` placeholder to use in computation. This will only be
+    known by the party that defines it.
+
+    .. code-block:: python
+
+        x = prot.define_private_placeholder(shape=(1024, 1024))
+
+    :See: tf.placeholder
+
+    :param List[int] shape: The shape of the placeholder.
+    :param bool apply_scaling: Whether or not to scale the value.
+    :param int share_type: ARITHMETIC or BOOLEAN.
+    :param str name: What name to give to this node in the graph.
+    :param AbstractFactory factory: Which tensor type to represent this value
+        with.
+    """
+
+        factory = factory or self.int_factory
+
+        suffix = "-" + name if name else ""
+        with tf.name_scope("private-placeholder{}".format(suffix)):
+
+            with tf.device(self.servers[0].device_name):
+                x0 = factory.placeholder(shape)
+
+            with tf.device(self.servers[1].device_name):
+                x1 = factory.placeholder(shape)
+
+            with tf.device(self.servers[2].device_name):
+                x2 = factory.placeholder(shape)
+
+        return ABY3PrivatePlaceholder(self, ((x0, x1), (x1, x2), (x2, x0)), apply_scaling, share_type)
+
+    def define_public_variable(
+        self,
+        initial_value,
+        apply_scaling: bool = True,
+        share_type=ARITHMETIC,
+        name: Optional[str] = None,
+        factory: Optional[AbstractFactory] = None,
+    ):
+        """Define a public variable.
+
+    This is like defining a variable in tensorflow except it creates one that
+    can be used by the protocol.
+
+    For most cases, you can think of this as the same as the one from
+    TensorFlow and you don't generally need to consider the difference.
+
+    For those curious, under the hood, the major difference is that this
+    function will pin your data to a specific device which will be used to
+    optimize the graph later on.
+
+    :see: tf.Variable
+
+    :param Union[np.ndarray,tf.Tensor,PondPublicTensor] initial_value: The
+        initial value.
+    :param bool apply_scaling: Whether or not to scale the value.
+    :param int share_type: ARITHMETIC or BOOLEAN.
+    :param str name: What name to give to this node in the graph.
+    :param AbstractFactory factory: Which tensor type to represent this value
+        with.
+    """
+        assert isinstance(
+            initial_value, (np.ndarray, tf.Tensor, ABY3PublicTensor)
+        ), type(initial_value)
+
+        factory = factory or self.int_factory
+
+        with tf.name_scope("public-var{}".format("-" + name if name else "")):
+
+            if isinstance(initial_value, np.ndarray):
+                v = self._encode(initial_value, apply_scaling)
+                x0, x1, x2 = v, v, v
+
+            elif isinstance(initial_value, tf.Tensor):
+                inttype = factory.native_type
+                v = self._encode(initial_value, apply_scaling, tf_int_type=inttype)
+                x0, x1, x2 = v, v, v
+
+            elif isinstance(initial_value, ABY3PublicTensor):
+                x0, x1, x2 = initial_value.unwrapped
+
+            else:
+                raise TypeError(
+                    ("Don't know how to turn {} into a " "public variable").format(
+                        type(initial_value)
+                    )
+                )
+
+            with tf.device(self.servers[0].device_name):
+                x_on_0 = factory.variable(x0)
+
+            with tf.device(self.servers[1].device_name):
+                x_on_1 = factory.variable(x1)
+
+            with tf.device(self.servers[2].device_name):
+                x_on_2 = factory.variable(x2)
+
+        x = ABY3PublicVariable(self, (x_on_0, x_on_1, x_on_2), apply_scaling, share_type)
+        return x
 
     def define_private_variable(
         self,
@@ -571,7 +726,7 @@ class ABY3(Protocol):
             # and then we round to integers
 
             if isinstance(scaled, np.ndarray):
-                integers = scaled.astype(int).astype(object)
+                integers = scaled.astype(np.int64).astype(object)
 
             elif isinstance(scaled, tf.Tensor):
                 factory = factory or self.int_factory
@@ -1240,6 +1395,52 @@ class ABY3(Protocol):
             ("Don't know how to {}: {}").format(base_name, [type(arg) for arg in args])
         )
 
+    def cache(self, xs):
+        """
+    Wraps all input tensors, including private and masked, in variables so
+    that computation and masking of these can be reused between different
+    runs.
+
+    For private predictions this may be used to avoid re-masking model
+    weights between each run, thereby saving on communication.
+    For private training this may be used to avoid re-masked the traning
+    data between each iteration, again saving on communication.
+    """
+
+        if isinstance(xs, (list, tuple)):
+            # apply recursively
+            # [cache(x) = [op, x]]; updaters = iter(op), cached = iter(x).
+            updaters, cached = zip(*[self.cache(x) for x in xs])
+            return tf.group(*updaters), cached
+
+        # base case
+        node_key = ("cache", xs)
+        cached = nodes.get(node_key, None)
+
+        if cached is not None:
+            return cached
+
+        dispatch = {
+            ABY3PublicTensor: _cache_public,
+            ABY3PrivateTensor: _cache_private
+        }
+        func = dispatch.get(_type(xs), None)
+        if func is None:
+            raise TypeError("Don't know how to cache {}".format(type(xs)))
+
+        # updater: for share in x in xs, define a variable v_share_x = share.
+        # cached: [v_share_x], v_share_x is initialized to 0. 
+        updater, cached = func(self, xs)
+        nodes[node_key] = cached
+
+        return updater, cached
+
+    @memoize
+    def relu(self, x: "ABY3Tensor", **kwargs):  # pylint: disable=unused-argument
+        """A Chebyshev polynomial approximation of the ReLU function."""
+        assert isinstance(x, ABY3Tensor), type(x)
+        return self.dispatch("relu", x)
+
 
 #
 # Classes representing the base values in the ABY3 protocol.
@@ -1678,6 +1879,103 @@ class ABY3PrivateTensor(ABY3Tensor):
         return self.prot.reveal(self)
 
 
+class ABY3PublicPlaceholder(ABY3PublicTensor):
+    """
+  This class essentially represents a public value, however it additionally
+  records the fact that the backing tensor was declared as a placeholder in
+  order to allow treating it as a placeholder itself.
+  """
+
+    def __init__(self, prot, shares, is_scaled, share_type):
+        super(ABY3PublicPlaceholder, self).__init__(prot, shares, is_scaled, share_type)
+        self.shares = shares
+
+    def __repr__(self) -> str:
+        return "ABY3PublicPlaceholder(shape={}, share_type={})".format(
+            self.shape, self.share_type
+        )
+
+    def feed(self, value):
+        """
+    Feed `value` to placeholder
+    """
+        enc = self.prot._encode(value, self.is_scaled)
+        feed0 = dict()
+        for share_i in self.shares:
+            feed0 |= share_i.feed(enc)
+        return {**feed0}
+
+
+class ABY3PrivatePlaceholder(ABY3PrivateTensor):
+
+    def __init__(self, prot, shares, is_scaled, share_type):
+        super(ABY3PrivatePlaceholder, self).__init__(prot, shares, is_scaled, share_type)
+        self.shares = shares
+
+    def __repr__(self) -> str:
+        return "ABY3PrivatePlaceholder(shape={}, share_type={})".format(
+            self.shape, self.share_type
+        )
+
+    def feed(self, value):
+        """
+    Feed `value` to placeholder
+    """
+        assert isinstance(value, np.ndarray), type(value)
+        enc = self.prot._encode(value, self.is_scaled)
+        assert isinstance(enc, np.ndarray)
+
+        # TODO(Ellery)
+        #
+        # Because what have been writen in tf_encrypted.protocol.pond.PondPrivatePlaceholder,
+        # which says they want to keep feeding op been done outside the TF graph,
+        # we will use the same way to construct shares.
+        if self.share_type == ARITHMETIC or self.share_type == BOOLEAN:
+            shape = self.shape
+            minval = self.backing_dtype.min
+            maxval = self.backing_dtype.max
+            # TODO(Morten) not using secure randomness here; reconsider after TF2
+            x0 = np.array(
+                [random.randrange(minval, maxval) for _ in range(np.product(shape))]
+            ).reshape(shape)
+            x1 = np.array(
+                [random.randrange(minval, maxval) for _ in range(np.product(shape))]
+            ).reshape(shape)
+
+            if self.share_type == ARITHMETIC:
+                x2 = enc - x0 - x1
+            elif self.share_type == BOOLEAN:
+                x2 = enc ^ x0 ^ x1
+        else:
+            raise NotImplementedError("Unknown share type.")
+        
+        feed0 = dict()
+        feeded_shares = ((x0, x1), (x1, x2), (x2, x0))
+        for share_i, feeded_i in zip(self.shares, feeded_shares):
+            for x_i, f_i in zip(share_i, feeded_i):
+                feed0 |= x_i.feed(f_i)
+        return {**feed0}
+
+
+class ABY3PublicVariable(ABY3PublicTensor):
+    """
+  This class essentially represents a public value, however it additionally
+  records the fact that the backing tensor was declared as a variable in
+  order to allow treating it as a variable itself.
+  """
+    def __init__(self, prot, shares, is_scaled, share_type):
+        super(ABY3PublicVariable, self).__init__(prot, shares, is_scaled, share_type)
+        self.shares = shares
+        self.initializer = tf.group(
+            *[var.initializer for share in shares for var in share]
+        )
+
+    def __repr__(self) -> str:
+        return "ABY3PublicVariable(shape={}, share_type={})".format(
+            self.shape, self.share_type
+        )
+
+
 class ABY3PrivateVariable(ABY3PrivateTensor):
     """
   This class essentially represents a private value, however it additionally
@@ -1696,6 +1994,39 @@ class ABY3PrivateVariable(ABY3PrivateTensor):
         return "ABY3PrivateVariable(shape={}, share_type={})".format(
             self.shape, self.share_type
         )
+
+
+class ABY3CachedPublicTensor(ABY3PublicTensor):
+    """A PondPublicTensor that has been cached for reuse."""
+
+    def __init__(self, prot, shares, is_scaled, updater, share_type=ARITHMETIC):
+        for share in shares:
+            assert isinstance(share, AbstractTensor), "Cached var not tensor."
+        assert isinstance(updater, tf.Operation), type(updater)
+
+        super(ABY3CachedPublicTensor, self).__init__(
+            prot, shares, is_scaled, share_type
+        )
+        self.updater = updater
+
+    def __repr__(self) -> str:
+        return "ABY3CachedPublicTensor(shape={})".format(self.shape)
+
+
+class ABY3CachedPrivateTensor(ABY3PrivateTensor):
+    """A PondPrivateTensor that has been cached for reuse."""
+
+    def __init__(self, prot, shares, is_scaled, updater, share_type=ARITHMETIC):
+        for share in shares:
+            for s in share:
+                assert isinstance(s, AbstractTensor), "Cached var not tensor."
+        assert isinstance(updater, tf.Operation), type(updater)
+
+        super(ABY3CachedPrivateTensor, self).__init__(prot, shares, is_scaled, share_type)
+        self.updater = updater
+
+    def __repr__(self) -> str:
+        return "ABY3CachedPrivateTensor(shape={})".format(self.shape)
 
 
 #
@@ -3453,3 +3784,76 @@ def _reshape_private(prot: ABY3, tensor: ABY3PrivateTensor, axe):
                 results[i][0] = shares[i][0].reshape(axe)
                 results[i][1] = shares[i][1].reshape(axe)
     return ABY3PrivateTensor(prot, results, tensor.is_scaled, tensor.share_type)
+
+
+def _relu_private(prot: ABY3, x: ABY3PrivateTensor):
+    assert isinstance(x, ABY3PrivateTensor), type(x)
+    assert x.share_type == ARITHMETIC, "ReLU only for ARITHMETIC sharing, getting BOOLEN sharing."
+    with tf.name_scope("relu"):
+        result = prot.polynomial_piecewise(x, (0,), ((0,), (0, 1)))
+    return result
+
+
+def _cache_public(prot, x):
+    assert isinstance(x, ABY3PublicTensor), type(x)
+
+    shares = x.unwrapped
+
+    with tf.name_scope("cache"):
+
+        with tf.device(prot.servers[0].device_name):
+            updater0, [x_on_0_cached] = wrap_in_variables(shares[0])
+
+        with tf.device(prot.servers[1].device_name):
+            updater1, [x_on_1_cached] = wrap_in_variables(shares[1])
+
+        with tf.device(prot.servers[2].device_name):
+            updater2, [x_on_2_cached] = wrap_in_variables(shares[2])
+
+        combined_updater = tf.group(updater0, updater1, updater2)
+
+    return (
+        combined_updater,
+        ABY3CachedPublicTensor(
+            prot, (x_on_0_cached, x_on_1_cached, x_on_2_cached), x.is_scaled, combined_updater,
+        ),
+    )
+
+
+def _cache_private(prot, x):
+    assert isinstance(x, ABY3PrivateTensor), type(x)
+
+    shares = x.unwrapped
+
+    with tf.name_scope("cache"):
+        
+        updaters, x_cached = [], []
+        for i in range(3):
+            with tf.device(prot.servers[i].device_name):
+                # XD: updater0 = assign, x0_cached = variable(0).
+                updater0, [x0_cached] = wrap_in_variables(shares[i][0])
+                updater1, [x1_cached] = wrap_in_variables(shares[i][1])
+                updaters.append(updater0)
+                updaters.append(updater1)
+                x_cached.append((x0_cached, x1_cached))
+
+        combined_updater = tf.group(updaters)
+
+    return (
+        combined_updater,
+        ABY3CachedPrivateTensor(
+            prot, x_cached, x.is_scaled, combined_updater,
+        ),
+    )
+
+
+def _type(x):
+    """Helper to check and return PondTensor types."""
+
+    if isinstance(x, ABY3PublicTensor):
+        return ABY3PublicTensor
+
+    if isinstance(x, ABY3PrivateTensor):
+        return ABY3PrivateTensor
+
+    return type(x)

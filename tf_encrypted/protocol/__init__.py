@@ -32,6 +32,7 @@ __all__ = [
     "memoize",
     "Pond",
     "SecureNN",
+    "ABY3",
     "TFEVariable",
     "TFETensor",
 ]
