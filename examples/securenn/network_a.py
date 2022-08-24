@@ -7,7 +7,6 @@ from __future__ import absolute_import
 
 import sys
 from typing import List
-import logging
 
 import tensorflow as tf
 import tensorflow.keras as keras
@@ -20,7 +19,7 @@ from conv_convert import get_data_from_tfrecord
 if len(sys.argv) >= 2:
     # config file was specified
     config_file = sys.argv[1]
-    config = tfe.RemoteConfig.load(config_file)
+    config = tfe.config.load(config_file)
 else:
     # default to using local config
     config = tfe.LocalConfig(
@@ -172,8 +171,6 @@ class PredictionClient:
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.ERROR)
-
     model_trainer = ModelTrainer()
     prediction_client = PredictionClient()
 
