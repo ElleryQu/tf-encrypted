@@ -4,7 +4,7 @@ import unittest
 import numpy as np
 import tensorflow as tf
 
-from tf_encrypted.operations import aux
+from tf_encrypted.operations import au_ as aux
 
 disabled_msg = "Aux module disabled"
 dontskip = aux.aux_module is not None

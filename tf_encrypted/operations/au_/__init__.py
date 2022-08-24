@@ -1,8 +1,8 @@
-from .aux import aux_module
-from .aux import bit_gather
-from .aux import bit_reverse
-from .aux import bit_split_and_gather
-from .aux import xor_indices
+from .au_ import aux_module
+from .au_ import bit_gather
+from .au_ import bit_reverse
+from .au_ import bit_split_and_gather
+from .au_ import xor_indices
 
 __all__ = [
     "aux_module",

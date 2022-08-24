@@ -8,7 +8,7 @@ import tf_encrypted as tfe
 
 logger = logging.getLogger("tf_encrypted")
 
-SO_PATH = "{dn}/operations/aux/aux_module_tf_{tfv}.so"
+SO_PATH = "{dn}/operations/au_/aux_module_tf_{tfv}.so"
 
 
 def _try_load_aux_module():

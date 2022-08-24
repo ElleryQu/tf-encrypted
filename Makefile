@@ -1,8 +1,8 @@
 # Global Variables used across many different rule types
 
-# Definition of the default rule
-all: test
-.PHONY: all
+# # Definition of the default rule
+# all: test
+# .PHONY: all
 
 # ###############################################
 # Bootstrapping
@@ -24,89 +24,89 @@ CURRENT_TF_VERSION=$(shell python -c 'import tensorflow as tf; print(tf.__versio
 # to be pushed as manylinux.
 DEFAULT_PLATFORM=manylinux1_x86_64
 
-dockercheck:
-ifeq (,$(DOCKER_PATH))
-ifeq (,$(findstring $(DOCKER_REQUIRED_VERSION),$(shell docker version)))
-ifeq (,$(BYPASS_DOCKER_CHECK))
-	$(error "Docker version $(DOCKER_REQUIRED_VERSION) is required.")
-endif
-endif
-endif
+# dockercheck:
+# ifeq (,$(DOCKER_PATH))
+# ifeq (,$(findstring $(DOCKER_REQUIRED_VERSION),$(shell docker version)))
+# ifeq (,$(BYPASS_DOCKER_CHECK))
+# 	$(error "Docker version $(DOCKER_REQUIRED_VERSION) is required.")
+# endif
+# endif
+# endif
 
-pythoncheck:
-ifeq (,$(findstring $(PYTHON_REQUIRED_VERSION),$(shell python -V 2>&1)))
-ifeq (,$(BYPASS_PYTHON_CHECK))
-	$(error "Python version $(PYTHON_REQUIRED_VERSION) is required.")
-endif
-endif
+# pythoncheck:
+# ifeq (,$(findstring $(PYTHON_REQUIRED_VERSION),$(shell python -V 2>&1)))
+# ifeq (,$(BYPASS_PYTHON_CHECK))
+# 	$(error "Python version $(PYTHON_REQUIRED_VERSION) is required.")
+# endif
+# endif
 
-pipcheck:
-ifeq (,$(PIP_PATH))
-ifeq (,$(BYPASS_PIP_CHECK))
-	$(error "Pip must be installed")
-endif
-endif
+# pipcheck:
+# ifeq (,$(PIP_PATH))
+# ifeq (,$(BYPASS_PIP_CHECK))
+# 	$(error "Pip must be installed")
+# endif
+# endif
 
-bootstrap: pythoncheck pipcheck
-	pip install -U pip setuptools
-	pip install -r requirements.txt
-	pip install -e .
-	$(MAKE) build
+# bootstrap: pythoncheck pipcheck
+# 	pip install -U pip setuptools
+# 	pip install -r requirements.txt
+# 	pip install -e .
+# 	$(MAKE) build
 
-# ###############################################
-# Testing and Linting
-#
-# Rules for running our tests and for running various different linters
-# ###############################################
-test: pythoncheck
-	pytest -n 8 -x -m "aby3" tf_encrypted
-	pytest -n 8 -x -m "pond" tf_encrypted
-	pytest -n 8 -x -m "securenn" tf_encrypted
-	pytest -n 8 -x -m "layers" tf_encrypted
-	pytest -n 8 -x -m "not aby3 and not pond and not securenn and not layers" tf_encrypted
+# # ###############################################
+# # Testing and Linting
+# #
+# # Rules for running our tests and for running various different linters
+# # ###############################################
+# # test: pythoncheck
+# # 	pytest -n 8 -x -m "aby3" tf_encrypted
+# # 	pytest -n 8 -x -m "pond" tf_encrypted
+# # 	pytest -n 8 -x -m "securenn" tf_encrypted
+# # 	pytest -n 8 -x -m "layers" tf_encrypted
+# # 	pytest -n 8 -x -m "not aby3 and not pond and not securenn and not layers" tf_encrypted
 
-lint: pythoncheck
-	flake8 tf_encrypted primitives operations examples
+# lint: pythoncheck
+# 	flake8 tf_encrypted primitives operations examples
 
-fmt: pythoncheck
-	isort --atomic --recursive tf_encrypted primitives operations examples
-	black tf_encrypted primitives operations examples
+# fmt: pythoncheck
+# 	isort --atomic --recursive tf_encrypted primitives operations examples
+# 	black tf_encrypted primitives operations examples
 
-typecheck: pythoncheck
-	MYPYPATH=$(CURRENT_DIR):$(CURRENT_DIR)/stubs mypy tf_encrypted
+# typecheck: pythoncheck
+# 	MYPYPATH=$(CURRENT_DIR):$(CURRENT_DIR)/stubs mypy tf_encrypted
 
-.PHONY: lint fmt test typecheck
+# .PHONY: lint fmt test typecheck
 
-# ##############################################
-# Documentation
-#
-# Rules for building our documentation
-# ##############################################
-SPHINXOPTS    =
-SPHINXBUILD   = sphinx-build
-SOURCEDIR     = docs/source
-BUILDDIR      = build
+# # ##############################################
+# # Documentation
+# #
+# # Rules for building our documentation
+# # ##############################################
+# SPHINXOPTS    =
+# SPHINXBUILD   = sphinx-build
+# SOURCEDIR     = docs/source
+# BUILDDIR      = build
 
-SPHINX_BUILD_GOOGLE_DOCSTRINGS = sphinx-apidoc
-SPHINX_NAPOLEAN_BUILD_DIR = docs/source/gen
-SPHINX_PROJECT_DIR = tf_encrypted
+# SPHINX_BUILD_GOOGLE_DOCSTRINGS = sphinx-apidoc
+# SPHINX_NAPOLEAN_BUILD_DIR = docs/source/gen
+# SPHINX_PROJECT_DIR = tf_encrypted
 
-CONVERT_DIR=tf_encrypted/convert
-BUILD_RESERVED_SCOPES=$(CONVERT_DIR)/specops.yaml
-$(BUILD_RESERVED_SCOPES): pythoncheck
-	python -m tf_encrypted.convert.gen.generate_reserved_scopes
+# CONVERT_DIR=tf_encrypted/convert
+# BUILD_RESERVED_SCOPES=$(CONVERT_DIR)/specops.yaml
+# $(BUILD_RESERVED_SCOPES): pythoncheck
+# 	python -m tf_encrypted.convert.gen.generate_reserved_scopes
 
-BUILD_CONVERTER_README=$(CONVERT_DIR)/gen/readme_template.md
-$(BUILD_CONVERTER_README): $(BUILD_RESERVED_SCOPES) pythoncheck
-	python -m tf_encrypted.convert.gen.generate_reserved_scopes
+# BUILD_CONVERTER_README=$(CONVERT_DIR)/gen/readme_template.md
+# $(BUILD_CONVERTER_README): $(BUILD_RESERVED_SCOPES) pythoncheck
+# 	python -m tf_encrypted.convert.gen.generate_reserved_scopes
 
-google-docstrings:
-	@$(SPHINX_BUILD_GOOGLE_DOCSTRINGS) -fMeET "$(SPHINX_PROJECT_DIR)" -o "$(SPHINX_NAPOLEAN_BUILD_DIR)"
+# google-docstrings:
+# 	@$(SPHINX_BUILD_GOOGLE_DOCSTRINGS) -fMeET "$(SPHINX_PROJECT_DIR)" -o "$(SPHINX_NAPOLEAN_BUILD_DIR)"
 
-docs: $(BUILD_CONVERTER_README) google-docstrings
-	@$(SPHINXBUILD) -M html "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
+# docs: $(BUILD_CONVERTER_README) google-docstrings
+# 	@$(SPHINXBUILD) -M html "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
 
-.PHONY: docs
+# .PHONY: docs
 
 # ###############################################
 # Version Derivation
@@ -132,153 +132,153 @@ else
     endif
 endif
 
-releasecheck:
-ifneq (yes,$(RELEASE_CONFIRM))
-	$(error "Set RELEASE_CONFIRM=yes to really build and push release artifacts")
-endif
+# releasecheck:
+# ifneq (yes,$(RELEASE_CONFIRM))
+# 	$(error "Set RELEASE_CONFIRM=yes to really build and push release artifacts")
+# endif
 
-.PHONY: releasecheck
+# .PHONY: releasecheck
 
-# ###############################################
-# Building Docker Image
-#
-# Builds a docker image for TF Encrypted that can be used to deploy and
-# test.
-# ###############################################
-DOCKER_BUILD=docker build -t tfencrypted/tf-encrypted:$(1) -f Dockerfile $(2) .
-docker: Dockerfile dockercheck
-	$(call DOCKER_BUILD,latest,)
+# # ###############################################
+# # Building Docker Image
+# #
+# # Builds a docker image for TF Encrypted that can be used to deploy and
+# # test.
+# # ###############################################
+# DOCKER_BUILD=docker build -t tfencrypted/tf-encrypted:$(1) -f Dockerfile $(2) .
+# docker: Dockerfile dockercheck
+# 	$(call DOCKER_BUILD,latest,)
 
-.PHONY: docker
+# .PHONY: docker
 
-# ###############################################
-# Releasing Docker Images
-#
-# Using the docker build infrastructure, this section is responsible for
-# authenticating to docker hub and pushing built docker containers up with the
-# appropriate tags.
-# ###############################################
-DOCKER_TAG=docker tag tfencrypted/tf-encrypted:$(1) tfencrypted/tf-encrypted:$(2)
-DOCKER_PUSH=docker push tfencrypted/tf-encrypted:$(1)
+# # ###############################################
+# # Releasing Docker Images
+# #
+# # Using the docker build infrastructure, this section is responsible for
+# # authenticating to docker hub and pushing built docker containers up with the
+# # appropriate tags.
+# # ###############################################
+# DOCKER_TAG=docker tag tfencrypted/tf-encrypted:$(1) tfencrypted/tf-encrypted:$(2)
+# DOCKER_PUSH=docker push tfencrypted/tf-encrypted:$(1)
 
-docker-logincheck:
-ifeq (,$(DOCKER_USERNAME))
-ifeq (,$(DOCKER_PASSWORD))
-	$(error "Docker login DOCKER_USERNAME and DOCKER_PASSWORD environment variables missing")
-endif
-endif
+# docker-logincheck:
+# ifeq (,$(DOCKER_USERNAME))
+# ifeq (,$(DOCKER_PASSWORD))
+# 	$(error "Docker login DOCKER_USERNAME and DOCKER_PASSWORD environment variables missing")
+# endif
+# endif
 
-docker-tag: dockercheck
-	$(call DOCKER_TAG,latest,$(VERSION))
+# docker-tag: dockercheck
+# 	$(call DOCKER_TAG,latest,$(VERSION))
 
-docker-push-tag: dockercheck
-	$(call DOCKER_PUSH,$(VERSION))
+# docker-push-tag: dockercheck
+# 	$(call DOCKER_PUSH,$(VERSION))
 
-docker-push-latest: dockercheck
-	$(call DOCKER_PUSH,latest)
+# docker-push-latest: dockercheck
+# 	$(call DOCKER_PUSH,latest)
 
-# Rely on DOCKER_USERNAME and DOCKER_PASSWORD being set inside CI or equivalent
-# environment
-docker-login: dockercheck docker-logincheck
-	@echo "Attempting to log into docker hub"
-	@docker login -u="$(DOCKER_USERNAME)" -p="$(DOCKER_PASSWORD)"
+# # Rely on DOCKER_USERNAME and DOCKER_PASSWORD being set inside CI or equivalent
+# # environment
+# docker-login: dockercheck docker-logincheck
+# 	@echo "Attempting to log into docker hub"
+# 	@docker login -u="$(DOCKER_USERNAME)" -p="$(DOCKER_PASSWORD)"
 
-.PHONY: docker-login docker-push-lateset docker-push-tag docker-tag
+# .PHONY: docker-login docker-push-lateset docker-push-tag docker-tag
 
-# ###############################################
-# Targets for pushing docker images
-#
-# The following are that are called dependent on the push type of the release.
-# They define what actions occur depending no whether this is simply a build of
-# master (or a branch), release candidate, or a full release.
-# ###############################################
+# # ###############################################
+# # Targets for pushing docker images
+# #
+# # The following are that are called dependent on the push type of the release.
+# # They define what actions occur depending no whether this is simply a build of
+# # master (or a branch), release candidate, or a full release.
+# # ###############################################
 
-# For all builds on the master branch, build the container
-docker-push-master: docker
+# # For all builds on the master branch, build the container
+# docker-push-master: docker
 
-# For all builds on the master branch, with an rc tag
-docker-push-release-candidate: releasecheck docker-push-master docker-login docker-tag docker-push-tag
+# # For all builds on the master branch, with an rc tag
+# docker-push-release-candidate: releasecheck docker-push-master docker-login docker-tag docker-push-tag
 
-# For all builds on the master branch with a release tag
-docker-push-release: docker-push-release-candidate docker-push-latest
+# # For all builds on the master branch with a release tag
+# docker-push-release: docker-push-release-candidate docker-push-latest
 
-# This command calls the right docker push rule based on the derived push type
-docker-push: docker-push-$(PUSHTYPE)
+# # This command calls the right docker push rule based on the derived push type
+# docker-push: docker-push-$(PUSHTYPE)
 
-.PHONY: docker-push docker-push-release docker-push-release-candidate docker-push-master
+# .PHONY: docker-push docker-push-release docker-push-release-candidate docker-push-master
 
-# ###############################################
-# Targets for building pip packages for pypi
-# ##############################################
+# # ###############################################
+# # Targets for building pip packages for pypi
+# # ##############################################
 
-pypi-version-check:
-ifeq (,$(shell grep -e $(VERSION) setup.py))
-	$(error "Version specified in setup.py does not match $(VERSION)")
-endif
-ifeq (,$(shell grep -e $(VERSION) meta.yaml))
-	$(error "Version specified in meta.yaml does not match $(VERSION)")
-endif
-ifeq (,$(shell grep -e $(VERSION) docs/source/conf.py))
-	$(error "Version specified in docs/source/conf.py does not match $(VERSION)")
-endif
+# pypi-version-check:
+# ifeq (,$(shell grep -e $(VERSION) setup.py))
+# 	$(error "Version specified in setup.py does not match $(VERSION)")
+# endif
+# ifeq (,$(shell grep -e $(VERSION) meta.yaml))
+# 	$(error "Version specified in meta.yaml does not match $(VERSION)")
+# endif
+# ifeq (,$(shell grep -e $(VERSION) docs/source/conf.py))
+# 	$(error "Version specified in docs/source/conf.py does not match $(VERSION)")
+# endif
 
-# default to manylinux
-pypi-platform-check:
-ifeq (,$(PYPI_PLATFORM))
-PYPI_PLATFORM=$(DEFAULT_PLATFORM)
-endif
+# # default to manylinux
+# pypi-platform-check:
+# ifeq (,$(PYPI_PLATFORM))
+# PYPI_PLATFORM=$(DEFAULT_PLATFORM)
+# endif
 
-pypi-build: pythoncheck pipcheck pypi-platform-check pypi-version-check build-all
-	pip install --upgrade setuptools wheel twine
-	rm -rf dist
-ifeq ($(PYPI_PLATFORM),$(DEFAULT_PLATFORM))
-	python setup.py sdist bdist_wheel --plat-name=$(PYPI_PLATFORM)
-else
-	python setup.py bdist_wheel --plat-name=$(PYPI_PLATFORM)
-endif
+# pypi-build: pythoncheck pipcheck pypi-platform-check pypi-version-check build-all
+# 	pip install --upgrade setuptools wheel twine
+# 	rm -rf dist
+# ifeq ($(PYPI_PLATFORM),$(DEFAULT_PLATFORM))
+# 	python setup.py sdist bdist_wheel --plat-name=$(PYPI_PLATFORM)
+# else
+# 	python setup.py bdist_wheel --plat-name=$(PYPI_PLATFORM)
+# endif
 
-.PHONY: pypi-build pypi-platform-check pypi-version-check
+# .PHONY: pypi-build pypi-platform-check pypi-version-check
 
-# ###############################################
-# Targets for publishing to pypi
-#
-# These targets requires a PYPI_USERNAME, PYPI_PASSWORD, and PYPI_PLATFORM
-# environment variables to be set to be executed properly.
-# ##############################################
+# # ###############################################
+# # Targets for publishing to pypi
+# #
+# # These targets requires a PYPI_USERNAME, PYPI_PASSWORD, and PYPI_PLATFORM
+# # environment variables to be set to be executed properly.
+# # ##############################################
 
-pypi-credentials-check:
-ifeq (,$(PYPI_USERNAME))
-ifeq (,$(PYPI_PASSWORD))
-	$(error "Missing PYPI_USERNAME and PYPI_PASSWORD environment variables")
-endif
-endif
+# pypi-credentials-check:
+# ifeq (,$(PYPI_USERNAME))
+# ifeq (,$(PYPI_PASSWORD))
+# 	$(error "Missing PYPI_USERNAME and PYPI_PASSWORD environment variables")
+# endif
+# endif
 
-pypi-push-master: pypi-credentials-check pypi-build
+# pypi-push-master: pypi-credentials-check pypi-build
 
-pypi-push-release-candidate: releasecheck pypi-credentials-check pypi-build
-	@echo "Attempting to upload to pypi"
-	twine upload -u="$(PYPI_USERNAME)" -p="$(PYPI_PASSWORD)" dist/*
+# pypi-push-release-candidate: releasecheck pypi-credentials-check pypi-build
+# 	@echo "Attempting to upload to pypi"
+# 	twine upload -u="$(PYPI_USERNAME)" -p="$(PYPI_PASSWORD)" dist/*
 
-pypi-push-release: pypi-push-release-candidate
+# pypi-push-release: pypi-push-release-candidate
 
-pypi-push: pypi-push-$(PUSHTYPE)
+# pypi-push: pypi-push-$(PUSHTYPE)
 
-.PHONY: pypi-push pypi-push-release pypi-push-release-candidate pypi-push-master pypi-credentials-check
+# .PHONY: pypi-push pypi-push-release pypi-push-release-candidate pypi-push-master pypi-credentials-check
 
-# ###############################################
-# Pushing Artifacts for a Release
-#
-# The following are meta-rules for building and pushing various different
-# release artifacts to their intended destinations.
-# ###############################################
+# # ###############################################
+# # Pushing Artifacts for a Release
+# #
+# # The following are meta-rules for building and pushing various different
+# # release artifacts to their intended destinations.
+# # ###############################################
 
-push:
-	@echo "Attempting to build and push $(VERSION) with push type $(PUSHTYPE) - $(EXACT_TAG)"
-	# make docker-push
-	make pypi-push
-	@echo "Done building and pushing artifacts for $(VERSION)"
+# push:
+# 	@echo "Attempting to build and push $(VERSION) with push type $(PUSHTYPE) - $(EXACT_TAG)"
+# 	# make docker-push
+# 	make pypi-push
+# 	@echo "Done building and pushing artifacts for $(VERSION)"
 
-.PHONY: push
+# .PHONY: push
 
 # ###############################################
 # libsodium
@@ -334,11 +334,11 @@ secure_random : $(SECURE_OUT_PRE)$(CURRENT_TF_VERSION).so
 # ###############################################
 # Aux ops 
 # ###############################################
-AUX_OUT_PRE = tf_encrypted/operations/aux/aux_module_tf_
+AUX_OUT_PRE = tf_encrypted/operations/au_/aux_module_tf_
 AUX_IN = $(wildcard operations/aux/*.cc)
 
 $(AUX_OUT_PRE)$(CURRENT_TF_VERSION).so: $(AUX_IN)
-	mkdir -p tf_encrypted/operations/aux
+	mkdir -p tf_encrypted/operations/au_
 	g++ -std=c++11 -shared $(AUX_IN) -o $(AUX_OUT_PRE)$(CURRENT_TF_VERSION).so \
 		-fPIC  $(TF_CFLAGS) $(FINAL_TF_LFLAGS) -O2
 
