@@ -28,6 +28,7 @@ from .factory import AbstractVariable
 from .helpers import inverse
 from .helpers import prod
 from .shared import binarize
+from .shared import conv2d
 from .shared import im2col
 
 
@@ -573,15 +574,15 @@ def crt_factory(INT_TYPE, MODULI):  # pylint: disable=invalid-name
 
             return factory.tensor(all_matches)
 
-        def im2col(self, h_filter: int, w_filter: int, stride: int, padding: str):
+        def im2col(self, h_filter: int, w_filter: int, padding: str, stride: int):
             with tf.name_scope("crt_im2col"):
                 backing = [
                     im2col(
                         xi,
                         h_filter=h_filter,
                         w_filter=w_filter,
-                        stride=stride,
                         padding=padding,
+                        stride=stride,
                     )
                     for xi in self.backing
                 ]
@@ -589,32 +590,7 @@ def crt_factory(INT_TYPE, MODULI):  # pylint: disable=invalid-name
 
         def conv2d(self, other, stride: int, padding: str = "SAME"):
             x, y = _lift(self, other)
-            with tf.name_scope("conv2d"):
-
-                h_filter, w_filter, in_filters, out_filters = map(int, y.shape)
-                n_x, c_x, h_x, w_x = map(int, x.shape)
-
-                if c_x != in_filters:
-                    # in depthwise conv the filter's in and out dimensions are reversed
-                    out_filters = in_filters
-
-                if padding == "SAME":
-                    h_out = int(math.ceil(float(h_x) / float(stride)))
-                    w_out = int(math.ceil(float(w_x) / float(stride)))
-                elif padding == "VALID":
-                    h_out = int(math.ceil(float(h_x - h_filter + 1) / float(stride)))
-                    w_out = int(math.ceil(float(w_x - w_filter + 1) / float(stride)))
-                else:
-                    raise ValueError("Don't know padding method '{}'".format(padding))
-
-                x_col = x.im2col(h_filter, w_filter, stride, padding)
-                w_col = y.transpose([3, 2, 0, 1]).reshape([int(out_filters), -1])
-                out = w_col.matmul(x_col)
-
-                out = out.reshape([out_filters, h_out, w_out, n_x])
-                out = out.transpose([3, 0, 1, 2])
-
-                return out
+            return conv2d(x, y, stride, padding)  # type: ignore
 
         def batch_to_space_nd(self, block_shape, crops):
             with tf.name_scope("crt_batch_to_space_nd"):

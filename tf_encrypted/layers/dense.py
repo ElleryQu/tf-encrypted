@@ -8,9 +8,12 @@ import tensorflow as tf
 
 import tf_encrypted as tfe
 from tf_encrypted.layers.core import Layer
-from tf_encrypted.protocol import TFETensor
+from tf_encrypted.protocol.pond import PondPrivateTensor
+from tf_encrypted.protocol.pond import PondPublicTensor
 
-InitialTensor = Optional[Union[np.ndarray, tf.Tensor, TFETensor]]
+InitialTensor = Optional[
+    Union[np.ndarray, tf.Tensor, PondPublicTensor, PondPrivateTensor]
+]
 
 
 class Dense(Layer):

@@ -5,7 +5,6 @@ import tensorflow as tf
 
 from .fixed import _validate_fixedpoint_config
 from .fixed import fixed64
-from .fixed import fixed64_heuristic
 from .fixed import fixed64_ni
 from .fixed import fixed100
 from .fixed import fixed100_ni
@@ -19,7 +18,6 @@ assert _validate_fixedpoint_config(fixed100, int100factory)
 assert _validate_fixedpoint_config(fixed100_ni, int100factory)
 assert _validate_fixedpoint_config(fixed64, int64factory)
 assert _validate_fixedpoint_config(fixed64_ni, int64factory)
-assert _validate_fixedpoint_config(fixed64_heuristic, int64factory)
 
 __all__ = [
     "native_factory",

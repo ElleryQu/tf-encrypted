@@ -11,7 +11,6 @@ import tensorflow as tf
 import yaml
 
 import tf_encrypted as tfe
-from tf_encrypted.utils import get_default_arg
 
 from ..keras.layers import BatchNormalization
 from ..keras.layers import DepthwiseConv2D
@@ -23,7 +22,6 @@ from ..layers import Dense
 from ..layers import MaxPooling2D
 from ..layers import Relu
 from ..layers import Sigmoid
-from ..layers import Softmax
 from ..protocol.pond import PondMaskedTensor
 from ..protocol.pond import PondPrivateTensor
 
@@ -71,8 +69,6 @@ def registry():
         "depthwise_conv2d": _keras_depthwise_conv2d,
         "Mean": _keras_global_avgpool,
         "Max": _keras_global_maxpool,
-        "FusedBatchNormV3": _fused_batchnorm_v3,
-        "Softmax": _softmax,
     }
 
     return reg
@@ -102,13 +98,7 @@ def _identity(converter, node: Any, inputs: List[str]) -> Any:
     return converter.outputs[inputs[0]]
 
 
-# [TODO] Zico: why is the 2nd argument to `matmul` assumed to be a NodeDef?
-# What if it is a previous TFE op result?
-# Indeed, the impl is not completed after my test.
-
-
 def _matmul(converter, node: Any, inputs: List[str]) -> Any:
-    print("register _matmul")
     a = converter.outputs[inputs[0]]
     b = converter.outputs[inputs[1]]
 
@@ -146,7 +136,6 @@ def _matmul(converter, node: Any, inputs: List[str]) -> Any:
 
 
 def _conv2d(converter, node, inputs):
-    print("register _conv2d")
     x_in = converter.outputs[inputs[0]]
     kernel = converter.outputs[inputs[1]]
 
@@ -175,7 +164,6 @@ def _conv2d(converter, node, inputs):
 
 
 def _keras_conv2d(converter, interiors, inputs):
-    print("register _keras_conv2d")
     x_in = converter.outputs[inputs[0]]
 
     conv_op = interiors["Conv2D"]
@@ -210,7 +198,6 @@ def _keras_conv2d(converter, interiors, inputs):
 
 
 def _keras_depthwise_conv2d(converter, interiors, inputs):
-    print("register _keras_depthwise_conv2d")
     x_in = converter.outputs[inputs[0]]
 
     conv_op = interiors["depthwise"]
@@ -251,7 +238,6 @@ def _keras_depthwise_conv2d(converter, interiors, inputs):
 
 
 def _keras_dense(converter, interiors, inputs):
-    print("register _keras_dense")
     x_in = converter.outputs[inputs[0]]
 
     kernel = interiors["kernel"]
@@ -274,7 +260,6 @@ def _keras_dense(converter, interiors, inputs):
 
 
 def _keras_batchnorm(converter, interiors, inputs):
-    print("register _keras_batchnorm")
     x_in = converter.outputs[inputs[0]]
 
     bn_op = interiors["FusedBatchNorm"]
@@ -306,66 +291,19 @@ def _keras_batchnorm(converter, interiors, inputs):
     return layer(x_in)
 
 
-def _fused_batchnorm_v3(converter, node, inputs):
-    print("register _fused_batchnorm_v3")
-    x_in = converter.outputs[inputs[0]]
-    # Heuristic: Assume x_in is output of a previous op, but not a constant NodeDef
-
-    fmt = node.attr["data_format"].s.decode("ascii")
-    epsilon = node.attr["epsilon"].f if "epsilon" in node.attr else None
-
-    gamma = _nodef_to_numpy_array(converter.outputs[inputs[1]])
-    gamma_init = tf.keras.initializers.Constant(gamma)
-
-    beta = _nodef_to_numpy_array(converter.outputs[inputs[2]])
-    beta_init = tf.keras.initializers.Constant(beta)
-
-    moving_mean = _nodef_to_numpy_array(converter.outputs[inputs[3]])
-    moving_mean_init = tf.keras.initializers.Constant(moving_mean)
-
-    moving_variance = _nodef_to_numpy_array(converter.outputs[inputs[4]])
-    moving_variance_init = tf.keras.initializers.Constant(moving_variance)
-
-    input_shape = x_in.shape.as_list()
-
-    layer = BatchNormalization(
-        input_shape=input_shape,
-        axis=(3 if fmt == "NHWC" else 1),
-        epsilon=epsilon
-        if epsilon is not None
-        else get_default_arg(BatchNormalization.__init__, "epsilon"),
-        gamma_initializer=gamma_init,
-        beta_initializer=beta_init,
-        moving_mean_initializer=moving_mean_init,
-        moving_variance_initializer=moving_variance_init,
-    )
-
-    return layer(x_in)
-
-
 def _relu(converter, node: Any, inputs: List[str]) -> Any:
-    print("register _relu")
     x_in = converter.outputs[inputs[0]]
 
     return Relu(x_in.shape.as_list()).forward(x_in)
 
 
 def _sigmoid(converter, node: Any, inputs: List[str]) -> Any:
-    print("register _sigmoid")
     x_in = converter.outputs[inputs[0]]
 
     return Sigmoid(x_in.shape.as_list()).forward(x_in)
 
 
-def _softmax(converter, node, inputs):
-    print("register _softmax")
-    x_in = converter.outputs[inputs[0]]
-
-    return Softmax(x_in.shape.as_list()).forward(x_in)
-
-
 def _strided_slice(converter, node: Any, inputs: List[str]) -> Any:
-    print("register _strided_slice")
     x_in = converter.outputs[inputs[0]]
 
     if isinstance(x_in, tf.NodeDef):
@@ -401,7 +339,6 @@ def _strided_slice(converter, node: Any, inputs: List[str]) -> Any:
 
 
 def _pack(converter, node: Any, inputs: List[str]) -> Any:
-    print("register _pack")
     final_inputs = []
 
     for x_in in inputs:
@@ -415,7 +352,6 @@ def _pack(converter, node: Any, inputs: List[str]) -> Any:
 
 
 def _bias_add(converter, node: Any, inputs: List[str]) -> Any:
-    print("register _bias_add")
     a = converter.outputs[inputs[0]]
     b = converter.outputs[inputs[1]]
 
@@ -433,7 +369,6 @@ def _bias_add(converter, node: Any, inputs: List[str]) -> Any:
 
 
 def _maxpool(converter, node: Any, inputs: List[str]) -> Any:
-    print("register _maxpool")
     x_in = converter.outputs[inputs[0]]
 
     ksize = node.attr["ksize"].list.i
@@ -455,14 +390,12 @@ def _maxpool(converter, node: Any, inputs: List[str]) -> Any:
 
 
 def _shape(converter, node: Any, inputs: List[str]) -> Any:
-    print("register _shape")
     x_in = converter.outputs[inputs[0]]
 
     return x_in.shape
 
 
 def _reshape(converter, node: Any, inputs: List[str]) -> Any:
-    print("register _reshape")
     x_in = converter.outputs[inputs[0]]
     shape = converter.outputs[inputs[1]]
 
@@ -479,7 +412,6 @@ def _reshape(converter, node: Any, inputs: List[str]) -> Any:
 
 
 def _transpose(converter, node: Any, inputs: List[str]) -> Any:
-    print("register _transpose")
     x_in = converter.outputs[inputs[0]]
     perm = converter.outputs[inputs[1]]
 
@@ -498,7 +430,6 @@ def _transpose(converter, node: Any, inputs: List[str]) -> Any:
 
 
 def _expand_dims(converter, node: Any, inputs: List[str]) -> Any:
-    print("register _expand_dims")
     x_in = converter.outputs[inputs[0]]
 
     if isinstance(x_in, tf.NodeDef):
@@ -514,7 +445,6 @@ def _expand_dims(converter, node: Any, inputs: List[str]) -> Any:
 
 
 def _negative(converter, node: Any, inputs: List[str]) -> Any:
-    print("register _negative")
     x_in = converter.outputs[inputs[0]]
 
     if isinstance(x_in, tf.NodeDef):
@@ -526,7 +456,6 @@ def _negative(converter, node: Any, inputs: List[str]) -> Any:
 
 
 def _gather(converter, node: Any, inputs: List[str]) -> Any:
-    print("register _gather")
     x_in = converter.outputs[inputs[0]]
     indices = converter.outputs[inputs[1]]
     axis = converter.outputs[inputs[2]]
@@ -544,7 +473,6 @@ def _gather(converter, node: Any, inputs: List[str]) -> Any:
 
 
 def _squeeze(converter, node: Any, inputs: List[str]) -> Any:
-    print("register _squeeze")
     x_in = converter.outputs[inputs[0]]
 
     axis = node.attr["squeeze_dims"].list.i
@@ -553,7 +481,6 @@ def _squeeze(converter, node: Any, inputs: List[str]) -> Any:
 
 
 def _split(converter, node: Any, inputs: List[str]) -> Any:
-    print("register _split")
     if node.op == "SplitV":
         # node.op is SplitV when num_or_size_splits is a list
         x_in = converter.outputs[inputs[0]]
@@ -581,7 +508,6 @@ def _split(converter, node: Any, inputs: List[str]) -> Any:
 
 
 def _pad(converter, node: Any, inputs: List[str]) -> Any:
-    print("register _pad")
     x_in = converter.outputs[inputs[0]]
     p = converter.outputs[inputs[1]]
 
@@ -594,7 +520,6 @@ def _pad(converter, node: Any, inputs: List[str]) -> Any:
 
 
 def _rsqrt(converter, node: Any, inputs: List[str]) -> Any:
-    print("register _rsqrt")
     x_in = converter.outputs[inputs[0]]
 
     if isinstance(x_in, tf.NodeDef):
@@ -630,12 +555,7 @@ def _rsqrt(converter, node: Any, inputs: List[str]) -> Any:
     return x
 
 
-# [TODO] Zico: Why are the three ops `_add`, `_sub`, `_mul`
-# so special to use public tensor?
-
-
 def _add(converter, node: Any, inputs: List[str]) -> Any:
-    print("register _add")
     a = converter.outputs[inputs[0]]
     b = converter.outputs[inputs[1]]
 
@@ -653,7 +573,6 @@ def _add(converter, node: Any, inputs: List[str]) -> Any:
 
 
 def _sub(converter, node: Any, inputs: List[str]) -> Any:
-    print("register _sub")
     a = converter.outputs[inputs[0]]
     b = converter.outputs[inputs[1]]
 
@@ -671,7 +590,6 @@ def _sub(converter, node: Any, inputs: List[str]) -> Any:
 
 
 def _mul(converter, node: Any, inputs: List[str]) -> Any:
-    print("register _mul")
     a = converter.outputs[inputs[0]]
     b = converter.outputs[inputs[1]]
 
@@ -689,7 +607,6 @@ def _mul(converter, node: Any, inputs: List[str]) -> Any:
 
 
 def _avgpool(converter, node: Any, inputs: List[str]) -> Any:
-    print("register _avgpool")
     x_in = converter.outputs[inputs[0]]
 
     ksize = node.attr["ksize"].list.i
@@ -711,7 +628,6 @@ def _avgpool(converter, node: Any, inputs: List[str]) -> Any:
 
 
 def _keras_global_avgpool(converter, node: Any, inputs: List[str]) -> Any:
-    print("register _keras_global_avgpool")
     x_in = converter.outputs[inputs[0]]
 
     content = converter.outputs[inputs[1]].attr["value"].tensor.tensor_content
@@ -728,7 +644,6 @@ def _keras_global_avgpool(converter, node: Any, inputs: List[str]) -> Any:
 
 
 def _keras_global_maxpool(converter, node: Any, inputs: List[str]) -> Any:
-    print("register _keras_global_maxpool")
     x_in = converter.outputs[inputs[0]]
 
     content = converter.outputs[inputs[1]].attr["value"].tensor.tensor_content
@@ -745,7 +660,6 @@ def _keras_global_maxpool(converter, node: Any, inputs: List[str]) -> Any:
 
 
 def _concat(converter, node: Any, inputs: List[str]) -> Any:
-    print("register _concat")
     input_list = [converter.outputs[inputs[i]] for i in range(len(inputs) - 1)]
     axis = converter.outputs[inputs[-1]]
     axis_int = axis.attr["value"].tensor.int_val[0]
@@ -754,7 +668,6 @@ def _concat(converter, node: Any, inputs: List[str]) -> Any:
 
 
 def _batch_to_space_nd(converter, node, inputs):
-    print("register _batch_to_space_nd")
     x_in = converter.outputs[inputs[0]]
     block_shape = converter.outputs[inputs[1]].attr["value"].tensor
     crops = converter.outputs[inputs[2]].attr["value"].tensor
@@ -763,7 +676,6 @@ def _batch_to_space_nd(converter, node, inputs):
 
 
 def _space_to_batch_nd(converter, node, inputs):
-    print("register _space_to_batch_nd")
     x_in = converter.outputs[inputs[0]]
     block_shape = converter.outputs[inputs[1]].attr["value"].tensor
     paddings = converter.outputs[inputs[2]].attr["value"].tensor
@@ -772,7 +684,6 @@ def _space_to_batch_nd(converter, node, inputs):
 
 
 def _flatten(converter, node, inputs):
-    print("register _flatten")
     x_in = converter.outputs[inputs[0]]
 
     shape = x_in.shape.as_list()
@@ -784,7 +695,6 @@ def _flatten(converter, node, inputs):
 
 
 def _required_space_to_batch_paddings(converter, node, inputs: List[str]):
-    print("register _required_space_to_batch_paddings")
 
     inputs_node = [converter.outputs[inputs[i]] for i in range(len(inputs))]
     inputs_int32 = []
@@ -838,7 +748,6 @@ def _required_space_to_batch_paddings(converter, node, inputs: List[str]):
 
 
 def _argmax(converter, node, inputs):
-    print("register _argmax")
     x_in = converter.outputs[inputs[0]]
     axis = converter.outputs[inputs[1]].attr["value"].tensor.int_val[0]
 
@@ -846,7 +755,6 @@ def _argmax(converter, node, inputs):
 
 
 def _slice(converter, node, inputs):
-    print("register _slice")
     x_in = converter.outputs[inputs[0]]
     begin = _nodef_to_numpy_array(converter.outputs[inputs[1]])
     size = _nodef_to_numpy_array(converter.outputs[inputs[2]])
@@ -934,8 +842,7 @@ def _nodef_to_private_pond(converter, x):
             raise TypeError(err_msg.format(dtype, x.name))
 
         def inputter_fn():
-            # return tf.constant(np.array(nums).reshape(1, 1))
-            return tf.constant(np.array(nums))
+            return tf.constant(np.array(nums).reshape(1, 1))
 
     else:
         if dtype == tf.float32:
@@ -947,19 +854,6 @@ def _nodef_to_private_pond(converter, x):
             nums = array.array("i", x.attr["value"].tensor.tensor_content)
         else:
             raise TypeError(err_msg.format(dtype, x.name))
-
-        # Corner case: a tensor contains only one element that is not
-        # stored in `tensor_content`, but in `xxx_val`
-        if len(nums) == 0 and np.prod(x_shape) == 1:
-            if dtype == tf.float32:
-                nums = x.attr["value"].tensor.float_val
-            elif dtype == tf.float64:
-                nums = x.attr["value"].tensor.float_val
-            elif dtype == tf.int32:
-                logging.warning(warn_msg, dtype, x.name)
-                nums = x.attr["value"].tensor.int_val
-            else:
-                raise TypeError(err_msg.format(dtype, x.name))
 
         def inputter_fn():
             return tf.constant(np.array(nums).reshape(x_shape))
@@ -994,14 +888,3 @@ def _nodef_to_numpy_array(x):
     nums = array.array(type_code, content)
 
     return np.array(nums).reshape(x_shape)
-
-
-def _lift_output(converter, node_name, public=True):
-    output = converter.outputs[node_name]
-    if isinstance(output, tf.NodeDef):
-        if public:
-            return _nodef_to_public_pond(converter, output)
-        else:
-            return _nodef_to_private_pond(converter, output)
-    else:
-        return output

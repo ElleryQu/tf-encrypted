@@ -2,7 +2,6 @@
 import unittest
 
 import numpy as np
-import pytest
 import tensorflow as tf
 
 import tf_encrypted as tfe
@@ -11,7 +10,6 @@ from tf_encrypted.layers.activation import Sigmoid
 from tf_encrypted.layers.activation import Tanh
 
 
-@pytest.mark.layers
 class TestRelu(unittest.TestCase):
     def setUp(self):
         tf.reset_default_graph()
@@ -46,7 +44,6 @@ class TestRelu(unittest.TestCase):
             np.testing.assert_allclose(out_pond, out_tensorflow, atol=0.01)
 
 
-@pytest.mark.layers
 class TestSigmoid(unittest.TestCase):
     def setUp(self):
         tf.reset_default_graph()
@@ -84,7 +81,6 @@ class TestSigmoid(unittest.TestCase):
         assert np.isclose(out_pond, out_tensorflow, atol=0.6).all()
 
 
-@pytest.mark.layers
 class TestTanh(unittest.TestCase):
     def setUp(self):
         tf.reset_default_graph()

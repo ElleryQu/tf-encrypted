@@ -2,7 +2,7 @@
 
 import os
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from tensorflow.keras.datasets import mnist
 
 from convert import encode
@@ -25,8 +25,7 @@ def save_training_data(images, labels, filename):
 
 (x_train, y_train), (x_test, y_test) = mnist.load_data()
 
-directory = os.path.dirname(os.path.abspath(__file__))
-data_dir = os.path.join(directory, "data")
+data_dir = os.path.expanduser("./data/")
 if not os.path.exists(data_dir):
     os.makedirs(data_dir)
 

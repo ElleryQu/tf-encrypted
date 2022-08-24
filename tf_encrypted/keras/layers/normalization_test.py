@@ -2,7 +2,6 @@
 import unittest
 
 import numpy as np
-import pytest
 import tensorflow as tf
 
 import tf_encrypted as tfe
@@ -12,7 +11,6 @@ from tf_encrypted.keras.testing_utils import layer_test
 np.random.seed(42)
 
 
-@pytest.mark.layers
 class TestBatchNormalization(unittest.TestCase):
     def setUp(self):
         tf.reset_default_graph()

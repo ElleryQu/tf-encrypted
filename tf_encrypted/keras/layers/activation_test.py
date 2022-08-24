@@ -2,7 +2,6 @@
 import unittest
 
 import numpy as np
-import pytest
 import tensorflow as tf
 
 import tf_encrypted as tfe
@@ -10,7 +9,6 @@ from tf_encrypted.keras.testing_utils import agreement_test
 from tf_encrypted.keras.testing_utils import layer_test
 
 
-@pytest.mark.layers
 class TestActivation(unittest.TestCase):
     def setUp(self):
         tf.reset_default_graph()
@@ -32,9 +30,10 @@ class TestActivation(unittest.TestCase):
         input_data = np.array([-1, -0.75, 0.75, 1]).reshape(input_shape)
         weights_second_layer = np.ones(shape=[1])
 
-        with tf.name_scope("TFE"):
-            private_input = tfe.define_private_variable(input_data)
-            w = tfe.define_private_variable(weights_second_layer)
+        with tfe.protocol.SecureNN() as prot:
+
+            private_input = prot.define_private_variable(input_data)
+            w = prot.define_private_variable(weights_second_layer)
 
             tfe_layer = tfe.keras.layers.Activation("sigmoid", input_shape=[4])
 

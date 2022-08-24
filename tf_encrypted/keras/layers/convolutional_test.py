@@ -2,7 +2,6 @@
 import unittest
 
 import numpy as np
-import pytest
 import tensorflow as tf
 
 import tf_encrypted as tfe
@@ -13,7 +12,6 @@ from tf_encrypted.keras.testing_utils import layer_test
 np.random.seed(42)
 
 
-@pytest.mark.layers
 class TestConv2d(unittest.TestCase):
     def setUp(self):
         tf.reset_default_graph()
@@ -40,7 +38,7 @@ class TestConv2d(unittest.TestCase):
         else:
             kernel_size_in = layer_kwargs["kernel_size"]
 
-        kernel = np.random.normal(size=kernel_size_in + (filters_in, filters))
+        kernel = np.random.normal(kernel_size_in + (filters_in, filters))
         initializer = tf.keras.initializers.Constant(kernel)
 
         base_kwargs = {
@@ -56,7 +54,6 @@ class TestConv2d(unittest.TestCase):
         )
 
 
-@pytest.mark.layers
 class TestDepthwiseConv2d(unittest.TestCase):
     def setUp(self):
         tf.reset_default_graph()
@@ -93,7 +90,7 @@ class TestDepthwiseConv2d(unittest.TestCase):
             k_weights = model.get_weights()
             k_config = model.get_config()
 
-        with tf.name_scope("TFE"):
+        with tfe.protocol.SecureNN():
             x = tfe.define_private_input(
                 "inputter", lambda: tf.convert_to_tensor(input_data)
             )

@@ -314,10 +314,7 @@ def match_numbered_scope(specop, search_string, return_group=True, numbered=True
 
     """
     if numbered:
-        # TF's auto names could be like: conv2d, conv2d_1, conv2d_1_1
-        expr = "^(.*/)*({0})/|(^(.*/)*({0}_[0-9]+))/|(^(.*/)*({0}_[0-9]+_[0-9]+))/".format(  # noqa
-            specop
-        )
+        expr = "^(.*/)*({0})/|(^(.*/)*({0}_[0-9]+))/".format(specop)
     else:
         expr = "^(.*/)*({0})/".format(specop)
 
@@ -348,9 +345,9 @@ def specop_from_numberedscope(scope):
     """
     An inverse for `match_numbered_scope`.
 
-    Example: 'conv2d_4' will produce 'conv2d'. Also, 'conv2d_1_1' will produce 'conv2d'.
+    Example: 'conv2d_4' will produce 'conv2d'.
     """
-    expr = "[_a-zA-Z0-9]+?(?=_[0-9]+)"
+    expr = "[_a-zA-Z0-9]+(?=_[0-9]+)"
     match = re.search(expr, scope)
     if match is not None:
         return match.group(0)

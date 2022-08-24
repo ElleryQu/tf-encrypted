@@ -4,7 +4,6 @@
 import unittest
 
 import numpy as np
-import pytest
 import tensorflow as tf
 
 import tf_encrypted as tfe
@@ -21,7 +20,6 @@ from .pond import _indexer_masked
 from .pond import _negative_masked
 
 
-@pytest.mark.pond
 class TestPond(unittest.TestCase):
     def test_encode(self):
 
@@ -36,7 +34,6 @@ class TestPond(unittest.TestCase):
                 np.testing.assert_array_almost_equal(actual, expected, decimal=3)
 
 
-@pytest.mark.pond
 class TestTruncate(unittest.TestCase):
     def setUp(self):
         tf.reset_default_graph()
@@ -84,7 +81,6 @@ class TestTruncate(unittest.TestCase):
             np.testing.assert_allclose(actual, expected)
 
 
-@pytest.mark.pond
 class TestPondPublicEqual(unittest.TestCase):
     def test_public_compare(self):
 
@@ -106,7 +102,6 @@ class TestPondPublicEqual(unittest.TestCase):
             assert np.array_equal(answer, expected)
 
 
-@pytest.mark.pond
 class TestPondPublicDivision(unittest.TestCase):
     def test_public_division(self):
 
@@ -143,7 +138,6 @@ class TestPondPublicDivision(unittest.TestCase):
             np.testing.assert_array_almost_equal(actual, expected, decimal=3)
 
 
-@pytest.mark.pond
 class TestShare(unittest.TestCase):
     def setUp(self):
         tf.reset_default_graph()
@@ -170,7 +164,6 @@ class TestShare(unittest.TestCase):
         self._core_test_sharing(native_factory(tf.int32, 67))
 
 
-@pytest.mark.pond
 class TestMasked(unittest.TestCase):
     def _setup(self, dtype):
         prot = tfe.protocol.Pond()
@@ -234,7 +227,6 @@ class TestMasked(unittest.TestCase):
                 np.testing.assert_array_equal(actual, expected)
 
 
-@pytest.mark.pond
 class TestIdentity(unittest.TestCase):
     def setUp(self):
         tf.reset_default_graph()
@@ -256,7 +248,6 @@ class TestIdentity(unittest.TestCase):
         np.testing.assert_array_equal(actual, expected)
 
 
-@pytest.mark.pond
 class TestPondAssign(unittest.TestCase):
     def setUp(self):
         tf.reset_default_graph()

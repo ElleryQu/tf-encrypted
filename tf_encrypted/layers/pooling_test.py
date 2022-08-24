@@ -10,7 +10,6 @@ from tf_encrypted.layers import AveragePooling2D
 from tf_encrypted.layers import MaxPooling2D
 
 
-@pytest.mark.layers
 class TestAveragePooling2D(unittest.TestCase):
     def setUp(self):
         tf.reset_default_graph()
@@ -91,7 +90,7 @@ class TestAveragePooling2D(unittest.TestCase):
         self._generic_tiled_forward("masked", False)
 
 
-@pytest.mark.layers
+@pytest.mark.slow
 class TestMaxPooling2D(unittest.TestCase):
     def setUp(self):
         tf.reset_default_graph()

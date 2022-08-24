@@ -31,9 +31,7 @@ def _try_load_secure_random_module():
         return None
 
     try:
-        module = tf.load_op_library(so_file)
-        logger.info("secure random module loaded: {}".format(module))
-        return module
+        return tf.load_op_library(so_file)
 
     except NotFoundError as ex:
         logger.warning(
@@ -90,7 +88,7 @@ def seeded_random_uniform(
     :rtype: tf.Tensor
     """
     dtype = dtypes.as_dtype(dtype)
-    if dtype not in (dtypes.int8, dtypes.int16, dtypes.int32, dtypes.int64):
+    if dtype not in (dtypes.int32, dtypes.int64):
         raise ValueError("Invalid dtype %r" % dtype)
 
     if maxval is None:
@@ -128,7 +126,7 @@ def random_uniform(
     """
 
     dtype = dtypes.as_dtype(dtype)
-    if dtype not in (dtypes.int8, dtypes.int16, dtypes.int32, dtypes.int64):
+    if dtype not in (dtypes.int32, dtypes.int64):
         raise ValueError("Invalid dtype %r" % dtype)
 
     if maxval is None:
@@ -140,5 +138,5 @@ def random_uniform(
     return secure_random_module.secure_random_uniform(shape, minval, maxval, name=name,)
 
 
-def secure_seed(name=None):
-    return secure_random_module.secure_seed(name=name)
+def secure_seed():
+    return secure_random_module.secure_seed()
