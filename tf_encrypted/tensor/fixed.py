@@ -71,7 +71,7 @@ fixed100_ni = FixedpointConfig(
 # TODO[Morten] make sure values in int64 configs make sense
 
 fixed64 = FixedpointConfig(
-    scaling_base=3,
+    scaling_base=2, # eq 3?
     precision_integral=7,
     precision_fractional=8,
     matmul_threshold=256,
